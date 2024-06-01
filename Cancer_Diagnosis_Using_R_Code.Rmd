@@ -1,0 +1,37 @@
+---
+title: "Cancer_Diagnosis_30074741"
+output: html_document
+date: "2024-01-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load necessary packages
+- Firstly Install Libraries (Execute code and then comment it out installation so it isn't executed on knit)
+```{r install &Load , message = FALSE}
+libraries <- c("ggplot2", "tidyr", "dplyr", "GGally", "tibble")
+
+install.packages(libraries) # Comment out after first execution
+
+
+for (lib in libraries) { 
+  library(lib, character.only=TRUE) #Library takes function names without quotes, character only must be used in a loop of this kind.
+}
+```
+
+# Load Dataset
+```{r Load Dataset}
+filepath <- 'C:\\Users\\DELL\\Downloads\\MS4S16_Dataset.csv' # Define file path. Windows requires \ to be replaced by \\. / Works on Mac (apparently).
+df <- as_tibble(read.csv(filepath, stringsAsFactors = FALSE)) # Since we have text data we do not want this read as a factor
+
+# Inspect summary and first few rows of data
+print(summary(df))
+print(head(df))
+```
+
+
+
+
+
