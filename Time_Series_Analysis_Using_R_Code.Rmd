@@ -1,0 +1,228 @@
+---
+title: "Time_Series_30074741"
+output: html_document
+date: "2024-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Task 1: Analysis Outline
+
+The Research Question:
+Investigate the trend and seasonality patterns in the monthly total number of international airline passengers.
+
+
+```{r Loading necessary packages}
+
+# Load necessary packages
+libraries <- c("ggplot2", "magrittr", "datasets")
+
+ #install.packages(libraries) # Comment out after first execution
+
+
+for (lib in libraries) { 
+  library(lib, character.only=TRUE) #Library takes function names without quotes, character only must be used in a loop of this kind.
+}
+```
+
+```{r Load and review the AirPassengers dataset}
+
+# Load the AirPassengers dataset
+data("AirPassengers")
+
+# Check for missing values
+missing_values <- sum(is.na(AirPassengers))
+
+# If there are missing values, remove them
+if (missing_values > 0) {
+  AirPassengers <- na.omit(AirPassengers)
+}
+
+# View the structure of the dataset
+str(AirPassengers)
+
+# Check the first few rows of the dataset
+head(AirPassengers)
+```
+```{r Convert}
+# Convert the dataset to a time series object
+air_passengers_ts <- ts(AirPassengers, frequency = 12, start = c(1949, 1))
+
+```
+
+# Exploratory Data Analysis (EDA)
+
+```{r visualisation on time series data}
+
+# Plot the time series data
+ggplot() +
+  geom_line(aes(x = time(air_passengers_ts), y = air_passengers_ts)) +
+  labs(title = "Monthly Total International Airline Passengers",
+       x = "Year",
+       y = "Number of Passengers") +
+  theme_minimal()
+```
+
+```{r visualisation on trend}
+
+# Plotting the trend using a moving average
+moving_avg <- filter(air_passengers_ts, rep(1/12, 12), sides = 2)
+
+# Plotting the trend
+ggplot() +
+  geom_line(aes(x = time(air_passengers_ts), y = air_passengers_ts), color = "black") +
+  geom_line(aes(x = time(air_passengers_ts), y = moving_avg), color = "blue", linetype = "dashed") +
+  labs(title = "Trend of Monthly Total International Airline Passengers",
+       x = "Year",
+       y = "Number of Passengers") +
+  theme_minimal()
+
+```
+
+```{r visualisation on seasonality}
+
+# Perform seasonal decomposition of the time series data
+seasonal_decompose <- decompose(air_passengers_ts)
+
+# Extracting components from seasonal decomposition
+trend <- seasonal_decompose$trend
+seasonal <- seasonal_decompose$seasonal
+random <- seasonal_decompose$random
+
+# Creating a data frame for plotting
+decomposition_df <- data.frame(
+  Month = time(air_passengers_ts),
+  Trend = trend,
+  Seasonal = seasonal,
+  Random = random
+)
+
+# Melt the data frame for easier plotting
+library(reshape2)
+melted_df <- melt(decomposition_df, id.vars = "Month")
+
+# Plotting the decomposed components using ggplot2
+library(ggplot2)
+ggplot(melted_df, aes(x = Month, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "Seasonal Decomposition of Monthly Total International Airline Passengers",
+       x = "Month",
+       y = "Value") +
+  theme_minimal()
+
+
+```
+
+#Model fitting 
+
+```{r Fitting an ARIMA model}
+# Load necessary packages
+#install.packages("forecast")
+
+library(forecast)
+
+# Fit an ARIMA model to the time series data
+arima_model <- auto.arima(air_passengers_ts)
+
+# Print the model summary
+summary(arima_model)
+```
+
+```{r checking the assumptions}
+
+# Check the assumptions of the ARIMA model
+checkresiduals(arima_model)
+```
+
+```{r visualisation of ACF & PACF}
+
+# Plot ACF and PACF of the residuals
+ggtsdisplay(residuals(arima_model))
+
+# Plot the ACF and PACF of the original time series data
+ggtsdisplay(air_passengers_ts)
+```
+
+```{r Using AIC criterion}
+
+# Use AIC criterion for model selection
+best_model <- auto.arima(air_passengers_ts, ic = "aic")
+
+# Print the summary of the best model selected by AIC
+summary(best_model)
+```
+# Forecasting future values
+
+```{r Fiting the ARIMA model}
+# Fit an ARIMA model to the time series data
+arima_model <- auto.arima(air_passengers_ts)
+
+# Forecast future values for the next 12 months
+forecast_future <- forecast(arima_model, h = 12)
+
+# Print the forecasted values
+print(forecast_future)
+```
+
+```{r visualisation for the forecast future}
+# Plot the forecasted values
+plot(forecast_future, main = "Forecast for Future Values")
+```
+
+# Forecasting existing values (for the last year in the dataset)
+
+```{r Extract the last year of data}
+# Extract the last year of data
+last_year_data <- window(air_passengers_ts, start = end(time(air_passengers_ts)) - 11)
+
+# Forecast for each month of the last year
+forecast_existing <- forecast(arima_model, h = 12)
+
+# Print the forecasted values for the last year
+print(forecast_existing)
+```
+
+```{r visualisation for forecast existing}
+# Plot the forecasted values for the last year
+plot(forecast_existing, main = "Forecast for Existing Values")
+```
+
+```{r accuracy}
+# Evaluate forecast accuracy
+accuracy(forecast_existing)
+```
+
+# In conclusion:
+
+Model Fitting (ARIMA):
+
+The ARIMA model selected for the time series data is ARIMA(2,1,1)(0,1,0)[12], which indicates a seasonal ARIMA model with parameters (p=2, d=1, q=1) and seasonal parameters (P=0, D=1, Q=0) with a seasonal period of 12.
+The coefficients of the ARIMA model are estimated as follows:
+AR1 (ar1): 0.5960
+AR2 (ar2): 0.2143
+MA1 (ma1): -0.9819
+The AIC value of the model is 1017.85, indicating the model's goodness of fit. Lower AIC values suggest better-fitting models.
+The Ljung-Box test for the residuals indicates that the residuals are not autocorrelated at lag values up to 24.
+Forecasting:
+
+Forecasting future values for the next 12 months has been performed using the ARIMA model.
+The forecasted values for future months have been obtained, and a plot has been generated to visualize these forecasts.
+Forecasting existing values (for the last year in the dataset) has also been performed using the same ARIMA model.
+
+Forecast Accuracy:
+
+Mean Error (ME): The mean error of the forecasted values is approximately 1.3423. This suggests that, on average, the forecasts overestimate the actual values by this amount.
+Root Mean Squared Error (RMSE): The RMSE, a measure of the average magnitude of the forecast errors, is approximately 10.84619. This indicates that, on average, the forecasted values deviate from the actual values by this amount.
+Mean Absolute Error (MAE): The MAE, which measures the average absolute difference between the forecasted and actual values, is approximately 7.86754. This provides insight into the typical magnitude of the forecast errors.
+Mean Percentage Error (MPE): The MPE, calculated as a percentage, is approximately 0.420698%. This measures the average percentage difference between the forecasted and actual values.
+Mean Absolute Percentage Error (MAPE): The MAPE, another measure of forecast accuracy expressed as a percentage, is approximately 2.800458%. This provides a sense of the overall accuracy of the forecasts relative to the actual values.
+Mean Absolute Scaled Error (MASE): The MASE, which compares the forecast accuracy of the model to a naïve benchmark (in this case, a random walk model), is approximately 0.245628. A value close to 0.25 suggests that the ARIMA model outperforms the naïve benchmark.
+
+ACF1 being close to zero (approximately -0.0012) indicates that there is little to no correlation between consecutive residuals. In other words, the residuals of the ARIMA model do not exhibit significant autocorrelation at lag 1.
+
+A value of ACF1 near zero suggests that the model has adequately captured the temporal dependencies in the data, and there are no systematic patterns remaining in the residuals at lag 1. This is desirable in time series analysis as it indicates that the model's predictions are not biased by any remaining patterns in the data.
+
+In conclusion, an ACF1 value close to zero (whether positive or negative) indicates good model fit and suggests that the model's residuals are uncorrelated at lag 1.Based on the ARIMA model fitting, forecasting results, and forecast accuracy evaluation, we can conclude that the selected ARIMA model adequately captures the underlying patterns in the time series data and provides reasonably accurate forecasts for both future and existing values. However, it's essential to monitor the model's performance over time and potentially update the model if necessary, especially if the data patterns change.
+
+
